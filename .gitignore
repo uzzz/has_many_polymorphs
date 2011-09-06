@@ -1,1 +1,4 @@
 *.swp
+*.sqlite3
+*.log
+Gemfile.lock

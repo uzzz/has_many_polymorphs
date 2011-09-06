@@ -26,7 +26,8 @@ Jeweler::Tasks.new do |gem|
   gem.homepage = 'https://foobar'
   gem.authors = ['Max Zhilinsky']
 
-  gem.add_dependency 'activerecord', '~> 3.0.0'
+  gem.add_dependency 'activerecord', '> 3.0.0'
+  gem.add_dependency 'activesupport', '> 3.0.0'
 end
 
 task :default => :spec
