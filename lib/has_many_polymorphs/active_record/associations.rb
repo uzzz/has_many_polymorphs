@@ -99,10 +99,6 @@ module ActiveRecord #:nodoc
 
      #  # Clears all records from the association. Returns an empty array.
       def delete_all
-        p "woner = #{@owner}"
-        p "target = #{@target}"
-        p "through ref name = #{@reflection.through_reflection.name}"
-
         load_target
         return if @target.empty?
 

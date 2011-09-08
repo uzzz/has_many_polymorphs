@@ -1,4 +1,5 @@
 *.swp
+*.swn
 *.sqlite3
 *.log
 Gemfile.lock
