@@ -31,10 +31,22 @@ module ActiveRecord #:nodoc
       end
     end
 
+    class Association
+      def association_scope
+        if klass
+          @association_scope ||= if self.is_a? ActiveRecord::Associations::PolymorphicAssociation
+                                   PolymorphicAssociationScope.new(self).scope
+                                 else
+                                   AssociationScope.new(self).scope
+                                 end
+        end
+      end
+    end
+
     # The association class for a <tt>has_many_polymorphs</tt> association.
     class PolymorphicAssociation < HasManyThroughAssociation
 
-      # Push a record onto the association. Triggers a database load for a uniqueness check only if <tt>:skip_duplicates</tt> is <tt>true</tt>. Return value is undefined.
+     #  # Push a record onto the association. Triggers a database load for a uniqueness check only if <tt>:skip_duplicates</tt> is <tt>true</tt>. Return value is undefined.
       def <<(*records)
         return if records.empty?
 
@@ -60,19 +72,14 @@ module ActiveRecord #:nodoc
       alias :push :<<
       alias :concat :<<
 
-      # Runs a <tt>find</tt> against the association contents, returning the matched records. All regular <tt>find</tt> options except <tt>:include</tt> are supported.
-      def find(*args)
-        opts = args._extract_options!
-        opts.delete :include
-        super(*(args + [opts]))
-      end
+     #  # Runs a <tt>find</tt> against the association contents, returning the matched records. All regular <tt>find</tt> options except <tt>:include</tt> are supported.
+     #  def find(*args)
+     #    opts = args._extract_options!
+     #    opts.delete :include
+     #    super(*(args + [opts]))
+     #  end
 
-      def construct_scope
-        # _logger_warn "Warning; not all usage scenarios for polymorphic scopes are supported yet."
-        super
-      end
-
-     # Deletes a record from the association. Return value is undefined.
+     # # Deletes a record from the association. Return value is undefined.
       def delete(*records)
         records = flatten_deeper(records)
         records.reject! {|record| @target.delete(record) if record.new_record?}
@@ -90,24 +97,26 @@ module ActiveRecord #:nodoc
         end
       end
 
-      # Clears all records from the association. Returns an empty array.
-      def clear(klass = nil)
+     #  # Clears all records from the association. Returns an empty array.
+      def delete_all
+        p "woner = #{@owner}"
+        p "target = #{@target}"
+        p "through ref name = #{@reflection.through_reflection.name}"
+
         load_target
         return if @target.empty?
 
-        if klass
-          delete(@target.select {|r| r.is_a? klass })
-        else
-          @owner.send(@reflection.through_reflection.name).clear
-          @target.clear
-        end
+        @owner.send(@reflection.through_reflection.name).clear
+        @target.clear
+
         []
       end
 
-      protected
+     #  def target_reflection_has_associated_record?
+     #    false
+     #  end
 
-#      undef :sum
-#      undef :create!
+      protected
 
       def construct_quoted_owner_attributes(*args) #:nodoc:
         # no access to returning() here? why not?
@@ -181,6 +190,18 @@ module ActiveRecord #:nodoc
 
       def build(attrs = nil) #:nodoc:
         raise PolymorphicMethodNotSupportedError, "You can't associate new records."
+      end
+
+      if RUBY_VERSION < '1.9.2'
+        # Array#flatten has problems with recursive arrays before Ruby 1.9.2.
+        # Going one level deeper solves the majority of the problems.
+        def flatten_deeper(array)
+          array.collect { |element| (element.respond_to?(:flatten) && !element.is_a?(Hash)) ? element.flatten : element }.flatten
+        end
+      else
+        def flatten_deeper(array)
+          array.flatten
+        end
       end
 
     end

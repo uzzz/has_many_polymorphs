@@ -16,11 +16,11 @@ rescue Bundler::GemNotFound
     "Did you run \`bundlee install\`?"
 end
 
-require File.expand_path('../../lib/has_many_polymorphs_mini', __FILE__)
+require File.expand_path('../../lib/has_many_polymorphs', __FILE__)
 Bundler.require
 
 # railtie doesn't work, don't know why, so just include here
-ActiveRecord::Base.send(:include, HasManyPolymorphsMini::Base)
+ActiveRecord::Base.send(:include, HasManyPolymorphs::Base)
 
 db_name = ENV['DB'] || 'sqlite3'
 database_yml = File.expand_path('../database.yml', __FILE__)

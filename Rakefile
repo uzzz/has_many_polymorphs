@@ -9,7 +9,7 @@ RSpec::Core::RakeTask.new do |t|
   t.verbose = false
 end
 
-desc 'Generate documentation for the conductor plugin.'
+desc 'Generate documentation for the has_many_polymorphs plugin.'
 Rake::RDocTask.new(:rdoc) do |rdoc|
   rdoc.rdoc_dir = 'rdoc'
   rdoc.title    = 'Conductor'
@@ -19,15 +19,13 @@ Rake::RDocTask.new(:rdoc) do |rdoc|
 end
 
 Jeweler::Tasks.new do |gem|
-  gem.name = 'has_many_polymorphs_mini'
-  gem.summary = %Q{Foobar}
-  gem.description = %Q{Foobar}
+  gem.name = 'has_many_polymorphs'
+  gem.summary = %Q{An ActiveRecord plugin for self-referential and double-sided polymorphic associations.}
   gem.email = ['uzzable@gmail.com']
-  gem.homepage = 'https://foobar'
-  gem.authors = ['Max Zhilinsky']
+  gem.authors = ["Evan Weaver", "James Stewart", "Matthias Viehweger", "Max Zhylinski"]
 
-  gem.add_dependency 'activerecord', '> 3.0.0'
-  gem.add_dependency 'activesupport', '> 3.0.0'
+  gem.add_dependency 'activerecord', '>= 3.1.0'
+  gem.add_dependency 'activesupport', '>= 3.1.0'
 end
 
 task :default => :spec
