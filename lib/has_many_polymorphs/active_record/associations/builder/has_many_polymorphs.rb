@@ -4,22 +4,22 @@ module ActiveRecord::Associations::Builder
 
     self.valid_options += [:dependent, :as, :through, :source, :source_type, :join_class_name, :from,
       :association_foreign_key, :polymorphic_key, :polymorphic_type_key, :join_extend, :parent_extend,
-      :table_aliases]
+      :table_aliases, :rename_individual_collections]
 
 
     def build
       raise ActiveRecord::Associations::PolymorphicError,
         ":from option must be an array" unless options[:from].is_a? Array
 
-      options[:as] ||= name.to_s.demodulize.underscore.to_sym
+      options[:as] ||= model.name.demodulize.underscore.to_sym
       options[:foreign_key] = "#{options[:as]}_id"
       options[:join_class_name] = options[:through].to_s.classify
 
       options[:dependent] = :destroy unless options.has_key? :dependent
 
       options[:association_foreign_key] =
-        options[:polymorphic_key] ||= "#{name.to_s.singularize}_id"
-      options[:polymorphic_type_key] ||= "#{name.to_s.singularize}_type"
+        options[:polymorphic_key] ||= "#{name._singularize}_id"
+      options[:polymorphic_type_key] ||= "#{name._singularize}_type"
 
       options[:extend] = spiked_create_extension_module(name, Array(options[:extend]))
       options[:join_extend] = spiked_create_extension_module(name, Array(options[:join_extend]), "Join")
@@ -47,13 +47,13 @@ module ActiveRecord::Associations::Builder
         :dependent   => reflection.options[:dependent]
       }
 
-      reflection.active_record.has_many(reflection.options[:through], options)
+      model.has_many(reflection.options[:through], options)
     end
 
     def create_has_many_through_associations_for_children_to_parent(association_id, reflection)
-      parent = self
-
       child_pluralization_map(association_id, reflection).each do |plural, singular|
+        parent = model
+
         if singular == reflection.options[:as]
           raise ActiveRecord::Associations::PolymorphicError,
             "You can't have a self-referential polymorphic has_many " +
@@ -65,7 +65,7 @@ module ActiveRecord::Associations::Builder
           through = "#{reflection.options[:through]}#{'_as_child' if parent == self}".to_sym
           unless reflections[through]
             has_many(through,
-              :as         => association_id.to_s.singularize,
+              :as         => association_id._singularize,
               :class_name => reflection.klass.name
             )
           end
@@ -95,7 +95,7 @@ module ActiveRecord::Associations::Builder
 
         # make push/delete accessible from the individual collections but still operate via the general collection
         extension_module = reflection.active_record.class_eval %[
-          module #{reflection.active_record.name + current_association.to_s.classify + "PolymorphicChildAssociationExtension"}
+          module #{model.name + current_association._classify + "PolymorphicChildAssociationExtension"}
             def push *args; proxy_association.owner.send(:#{association_id}).send(:push, *args); self; end
             alias :<< :push
             def delete *args; proxy_association.owner.send(:#{association_id}).send(:delete, *args); end
@@ -103,20 +103,20 @@ module ActiveRecord::Associations::Builder
           end
         ]
 
-        reflection.active_record.has_many(
+        model.has_many(
           current_association.to_sym,
           :through     => reflection.options[:through],
-          :source      => association_id.to_s.singularize,
-          :source_type => plural.to_s.classify.constantize.base_class.name,
-          :class_name  => plural.to_s.classify.constantize.name, # make STI not conflate subtypes
-          :extend => (Array(extension_module))
+          :source      => association_id._singularize,
+          :source_type => plural._as_class.base_class.name,
+          :class_name  => plural._as_class.name, # make STI not conflate subtypes
+          :extend      => (Array(extension_module))
          )
       end
     end
 
     def child_pluralization_map(association_id, reflection)
       Hash[*reflection.options[:from].map do |plural|
-        [plural,  plural.to_s.singularize.to_sym]
+        [plural,  plural._singularize]
       end.flatten]
     end
 

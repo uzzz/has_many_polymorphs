@@ -77,16 +77,16 @@ describe 'Person' do
     cat = Cat.create :name => 'Cat'
     @person.pets << dog << cat
 
-    @person.cats.should == [cat]
-    @person.dogs.should == [dog]
+    @person.pet_cats.should == [cat]
+    @person.pet_dogs.should == [dog]
   end
 
   it 'should know how to push to individual collections' do
     dog = Dog.create :name => 'Dog'
     cat = Cat.create :name => 'Cat'
 
-    @person.dogs.push(dog)
-    @person.dogs.push(cat)
+    @person.pet_dogs.push(dog)
+    @person.pet_dogs.push(cat)
 
     @person.pets.should == [dog, cat]
   end
@@ -96,10 +96,10 @@ describe 'Person' do
     cat = Cat.create :name => 'Cat'
     @person.pets << dog << cat
 
-    @person.dogs.delete(dog)
+    @person.pet_dogs.delete(dog)
 
-    @person.dogs.should be_blank
-    @person.cats.should == [cat]
+    @person.pet_dogs.should be_blank
+    @person.pet_cats.should == [cat]
     @person.pets.should == [cat]
   end
 
@@ -108,10 +108,10 @@ describe 'Person' do
     cat = Cat.create :name => 'Cat'
     @person.pets << dog << cat
 
-    @person.dogs.clear
+    @person.pet_dogs.clear
 
-    @person.dogs.should be_blank
-    @person.cats.should == [cat]
+    @person.pet_dogs.should be_blank
+    @person.pet_cats.should == [cat]
     @person.pets.should == [cat]
   end
 

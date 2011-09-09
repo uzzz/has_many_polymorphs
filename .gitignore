@@ -2,4 +2,5 @@
 *.swn
 *.sqlite3
 *.log
+*.gem
 Gemfile.lock

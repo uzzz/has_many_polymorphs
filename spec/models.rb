@@ -11,9 +11,10 @@ end
 
 class Person < ActiveRecord::Base
   has_many_polymorphs :pets,
-    :as      => :master,
-    :from    => [:cats, :dogs],
-    :through => :ownerships
+    :as                            => :master,
+    :from                          => [:cats, :dogs],
+    :through                       => :ownerships,
+    :rename_individual_collections => true
 end
 
 class SimpleModel < ActiveRecord::Base
