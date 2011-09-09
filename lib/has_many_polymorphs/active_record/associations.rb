@@ -61,7 +61,7 @@ module ActiveRecord #:nodoc
               raise PolymorphicError, "You can't associate unsaved records."
             end
             next if @reflection.options[:skip_duplicates] and @target.include? record
-            @owner.send(@reflection.through_reflection.name).proxy_target << @reflection.klass.create!(construct_join_attributes(record))
+            @owner.association(@reflection.through_reflection.name).target << @reflection.klass.create!(construct_join_attributes(record))
             @target << record if loaded?
           end
         end

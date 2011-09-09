@@ -55,11 +55,12 @@ module ActiveRecord::Associations::Builder
 
       child_pluralization_map(association_id, reflection).each do |plural, singular|
         if singular == reflection.options[:as]
-          raise PolymorphicError, "You can't have a self-referential polymorphic has_many " +
+          raise ActiveRecord::Associations::PolymorphicError,
+            "You can't have a self-referential polymorphic has_many " +
             ":through without renaming the non-polymorphic foreign key in the join model."
         end
 
-        plural.to_s.classify.constantize.instance_eval do
+        plural._as_class.instance_eval do
           # the join table
           through = "#{reflection.options[:through]}#{'_as_child' if parent == self}".to_sym
           unless reflections[through]
@@ -70,11 +71,18 @@ module ActiveRecord::Associations::Builder
           end
 
           # the association to the target's parents
-          association = reflection.options[:as].to_s.pluralize.to_sym
+          association = "#{reflection.options[:as]._pluralize}#{"_of_#{association_id}" if reflection.options[:rename_individual_collections]}".to_sym
           has_many(association,
-            :through    => through,
-            :class_name => parent.name,
-            :source     => reflection.options[:as]
+            :through     => through,
+            :class_name  => parent.name,
+            :source      => reflection.options[:as],
+            :foreign_key => reflection.options[:foreign_key],
+            :extend      => reflection.options[:parent_extend],
+            :conditions  => reflection.options[:parent_conditions],
+            :order       => reflection.options[:parent_order],
+            :offset      => reflection.options[:parent_offset],
+            :limit       => reflection.options[:parent_limit],
+            :group       => reflection.options[:parent_group]
           )
         end
       end
@@ -88,10 +96,9 @@ module ActiveRecord::Associations::Builder
         # make push/delete accessible from the individual collections but still operate via the general collection
         extension_module = reflection.active_record.class_eval %[
           module #{reflection.active_record.name + current_association.to_s.classify + "PolymorphicChildAssociationExtension"}
-            def push *args; proxy_owner.send(:#{association_id}).send(:push, *args); self; end
+            def push *args; proxy_association.owner.send(:#{association_id}).send(:push, *args); self; end
             alias :<< :push
-            def delete *args; proxy_owner.send(:#{association_id}).send(:delete, *args); end
-            def clear; proxy_owner.send(:#{association_id}).send(:clear, #{singular.to_s.classify}); end
+            def delete *args; proxy_association.owner.send(:#{association_id}).send(:delete, *args); end
             self
           end
         ]
@@ -102,11 +109,7 @@ module ActiveRecord::Associations::Builder
           :source      => association_id.to_s.singularize,
           :source_type => plural.to_s.classify.constantize.base_class.name,
           :class_name  => plural.to_s.classify.constantize.name, # make STI not conflate subtypes
-          :extend => (Array(extension_module))#,
-          # :limit => reflection.options[:limit],
-          # :order => devolve(association_id, reflection, reflection.options[:order], plural._as_class),
-          # :conditions => devolve(association_id, reflection, reflection.options[:conditions], plural._as_class),
-          # :group => devolve(association_id, reflection, reflection.options[:group], plural._as_class)
+          :extend => (Array(extension_module))
          )
       end
     end
@@ -145,7 +148,8 @@ module ActiveRecord::Associations::Builder
           begin
             table = plural.to_s.classify.constantize.table_name
           rescue NameError => e
-            raise PolymorphicError, "Could not find a valid class for #{plural.inspect} " +
+            raise ActiveRecord::Associations::PolymorphicError,
+              "Could not find a valid class for #{plural.inspect} " +
               "(tried #{plural.to_s.classify.constantize}). If it's namespaced, be sure to specify it " +
               "as :\"module/#{plural}\" instead."
           end
