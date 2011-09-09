@@ -2,7 +2,7 @@ module ActiveRecord
   module Associations
     class PolymorphicAssociationScope < AssociationScope
       def add_constraints(scope)
-        scope.joins(construct_joins)
+        scope.joins(construct_joins).where(construct_conditions)
       end
 
       private
@@ -31,6 +31,22 @@ module ActiveRecord
           "ON #{construct_from}.#{options[:polymorphic_key]} = #{klass.quoted_table_name}.#{klass.primary_key} " +
           "AND #{construct_from}.#{options[:polymorphic_type_key]} = #{@association.reflection.klass.quote_value(klass.base_class.name)}"
         end.uniq.join(" ")# + " #{custom_joins}"
+      end
+
+      def construct_quoted_owner_attributes(*args) #:nodoc:
+        # no access to returning() here? why not?
+        type_key = options[:foreign_type_key]
+        h = {options[:foreign_key] => owner.id}
+        h[type_key] = owner.class.base_class.name if type_key
+        h
+      end
+
+      def construct_conditions #:nodoc:
+        # build the fully realized condition string
+        conditions = construct_quoted_owner_attributes.map do |field, value|
+          "#{construct_from}.#{field} = #{@association.reflection.klass.quote_value(value)}" if value
+        end
+        "(" + conditions.compact.join(') AND (') + ")"
       end
     end
   end

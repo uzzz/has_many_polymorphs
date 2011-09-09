@@ -17,7 +17,10 @@ module ActiveRecord
 
           # rewrite the record with the right column names
           table_aliases = reflection.options[:table_aliases].dup
-          record = Hash[*table_aliases.keys.map {|key| [key, record[table_aliases[key]]] }.flatten]
+          # p table_aliases
+          # p Benchmark.measure {
+            record = Hash[*table_aliases.keys.map {|key| [key, record[table_aliases[key]]] }.flatten]
+          # }
 
           # find the real child class
           klass = record["#{self.table_name}.#{reflection.options[:polymorphic_type_key]}"].constantize
@@ -48,10 +51,7 @@ module ActiveRecord
           end.flatten]
 
           # allocate and assign values
-          klass.allocate.tap do |obj|
-            obj.instance_variable_set("@attributes", record)
-            obj.instance_variable_set("@attributes_cache", Hash.new)
-
+          klass.allocate.init_with('attributes' => record).tap do |obj|
             obj.run_callbacks :find
             obj.run_callbacks :initialize
           end
