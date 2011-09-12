@@ -17,10 +17,7 @@ module ActiveRecord
 
           # rewrite the record with the right column names
           table_aliases = reflection.options[:table_aliases].dup
-          # p table_aliases
-          # p Benchmark.measure {
-            record = Hash[*table_aliases.keys.map {|key| [key, record[table_aliases[key]]] }.flatten]
-          # }
+          record = Hash[*table_aliases.keys.map {|key| [key, record[table_aliases[key]]] }.flatten]
 
           # find the real child class
           klass = record["#{self.table_name}.#{reflection.options[:polymorphic_type_key]}"].constantize
