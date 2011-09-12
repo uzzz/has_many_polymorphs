@@ -97,7 +97,7 @@ module ActiveRecord #:nodoc
         end
       end
 
-     #  # Clears all records from the association. Returns an empty array.
+      # Clears all records from the association. Returns an empty array.
       def delete_all
         load_target
         return if @target.empty?

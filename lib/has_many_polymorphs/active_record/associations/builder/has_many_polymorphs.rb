@@ -11,9 +11,11 @@ module ActiveRecord::Associations::Builder
       raise ActiveRecord::Associations::PolymorphicError,
         ":from option must be an array" unless options[:from].is_a? Array
 
+
       options[:as] ||= model.name.demodulize.underscore.to_sym
-      options[:foreign_key] = "#{options[:as]}_id"
-      options[:join_class_name] = options[:through].to_s.classify
+      options[:foreign_key] ||= "#{options[:as]}_id"
+      options[:through] ||= build_join_table_symbol(name, (options[:as]._pluralize or model.table_name))
+      options[:join_class_name] ||= options[:through]._classify
 
       options[:dependent] = :destroy unless options.has_key? :dependent
 
@@ -171,6 +173,10 @@ module ActiveRecord::Associations::Builder
       aliases.map do |table, _alias|
         "#{table} AS #{_alias}"
       end.sort).join(", ")
+    end
+
+    def build_join_table_symbol(association_id, name)
+      [name.to_s, association_id.to_s].sort.join("_").to_sym
     end
 
   end
