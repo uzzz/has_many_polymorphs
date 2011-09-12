@@ -114,69 +114,12 @@ module ActiveRecord #:nodoc
 
       protected
 
-      def construct_quoted_owner_attributes(*args) #:nodoc:
-        # no access to returning() here? why not?
-        type_key = @reflection.options[:foreign_type_key]
-        h = {@reflection.primary_key_name => @owner.id}
-        h[type_key] = @owner.class.base_class.name if type_key
-        h
-      end
-
-      def construct_from #:nodoc:
-        # build the FROM part of the query, in this case, the polymorphic join table
-        @reflection.klass.quoted_table_name
-      end
-
-      def construct_owner #:nodoc:
-        # the table name for the owner object's class
-        @owner.class.quoted_table_name
-      end
-
-      def construct_owner_key #:nodoc:
-        # the primary key field for the owner object
-        @owner.class.primary_key
-      end
-
-      def construct_select(custom_select = nil) #:nodoc:
-        # build the select query
-        selected = custom_select || @reflection.options[:select]
-      end
-
-      def construct_joins(custom_joins = nil) #:nodoc:
-        # build the string of default joins
-        "JOIN #{construct_owner} AS polymorphic_parent ON #{construct_from}.#{@reflection.options[:foreign_key]} = polymorphic_parent.#{construct_owner_key} " +
-        @reflection.options[:from].map do |plural|
-          klass = plural._as_class
-          "LEFT JOIN #{klass.quoted_table_name} ON #{construct_from}.#{@reflection.options[:polymorphic_key]} = #{klass.quoted_table_name}.#{klass.primary_key} AND #{construct_from}.#{@reflection.options[:polymorphic_type_key]} = #{@reflection.klass.quote_value(klass.base_class.name)}"
-        end.uniq.join(" ") + " #{custom_joins}"
-      end
-
-      def construct_conditions #:nodoc:
-        # build the fully realized condition string
-        conditions = construct_quoted_owner_attributes.map do |field, value|
-          "#{construct_from}.#{field} = #{@reflection.klass.quote_value(value)}" if value
-        end
-        conditions << custom_conditions if custom_conditions
-        "(" + conditions.compact.join(') AND (') + ")"
-      end
-
-      def custom_conditions #:nodoc:
-        # custom conditions... not as messy as has_many :through because our joins are a little smarter
-        if @reflection.options[:conditions]
-          "(" + interpolate_sql(@reflection.klass.send(:sanitize_sql, @reflection.options[:conditions])) + ")"
-        end
-      end
-
-      alias :construct_owner_attributes :construct_quoted_owner_attributes
-      alias :conditions :custom_conditions # XXX possibly not necessary
-      alias :sql_conditions :custom_conditions # XXX ditto
-
       # construct attributes for join for a particular record
       def construct_join_attributes(record) #:nodoc:
         {
-          @reflection.options[:polymorphic_key] => record.id,
+          @reflection.options[:polymorphic_key]      => record.id,
           @reflection.options[:polymorphic_type_key] => "#{record.class.base_class}",
-          @reflection.options[:foreign_key] => @owner.id
+          @reflection.options[:foreign_key]          => @owner.id
         }.merge(
           @reflection.options[:foreign_type_key] ?
             { @reflection.options[:foreign_type_key] => "#{@owner.class.base_class}" } :
