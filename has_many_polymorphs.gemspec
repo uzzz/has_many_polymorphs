@@ -1,9 +1,11 @@
 # -*- encoding: utf-8 -*-
+$LOAD_PATH << File.join(File.dirname(__FILE__), 'lib')
+require 'has_many_polymorphs/version'
 
 Gem::Specification.new do |s|
   s.name = %q{has_many_polymorphs}
   s.summary = %q{An ActiveRecord plugin for self-referential and double-sided polymorphic associations.}
-  s.version = "1.0.0"
+  s.version = HasManyPolymorphs::VERSION
 
   s.required_rubygems_version = ">= 1.3.6"
 

@@ -111,7 +111,8 @@ module ActiveRecord::Associations::Builder
           :source      => association_id._singularize,
           :source_type => plural._as_class.base_class.name,
           :class_name  => plural._as_class.name, # make STI not conflate subtypes
-          :extend      => (Array(extension_module))
+          :extend      => (Array(extension_module)),
+          :order       => reflection.options[:order]
          )
       end
     end
