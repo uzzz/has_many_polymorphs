@@ -2,34 +2,14 @@ module ActiveRecord::Associations::Builder
   class HasManyPolymorphs < CollectionAssociation #:nodoc:
     self.macro = :has_many_polymorphs
 
-    self.valid_options += [:dependent, :as, :through, :source, :source_type, :join_class_name, :from,
-      :association_foreign_key, :polymorphic_key, :polymorphic_type_key, :join_extend, :parent_extend,
-      :table_aliases, :rename_individual_collections]
+    self.valid_options += [:dependent, :as, :through, :source, :source_type,
+      :join_class_name, :from, :association_foreign_key, :polymorphic_key,
+      :polymorphic_type_key, :join_extend, :parent_extend, :table_aliases,
+      :rename_individual_collections]
 
 
     def build
-      raise ActiveRecord::Associations::PolymorphicError,
-        ":from option must be an array" unless options[:from].is_a? Array
-
-
-      options[:as] ||= model.name.demodulize.underscore.to_sym
-      options[:foreign_key] ||= "#{options[:as]}_id"
-      options[:through] ||= build_join_table_symbol(name, (options[:as]._pluralize or model.table_name))
-      options[:join_class_name] ||= options[:through]._classify
-
-      options[:dependent] = :destroy unless options.has_key? :dependent
-
-      options[:association_foreign_key] =
-        options[:polymorphic_key] ||= "#{name._singularize}_id"
-      options[:polymorphic_type_key] ||= "#{name._singularize}_type"
-
-      options[:extend] = spiked_create_extension_module(name, Array(options[:extend]))
-      options[:join_extend] = spiked_create_extension_module(name, Array(options[:join_extend]), "Join")
-      options[:parent_extend] = spiked_create_extension_module(name, Array(options[:parent_extend]), "Parent")
-
-      options[:table_aliases] ||= build_table_aliases([options[:through]] + options[:from])
-
-      options[:select] ||= build_select(name, options[:table_aliases])
+      set_default_options
 
       reflection = super
 
@@ -41,6 +21,30 @@ module ActiveRecord::Associations::Builder
     end
 
     private
+
+    def set_default_options
+      raise ActiveRecord::Associations::PolymorphicError,
+        ":from option must be an array" unless options[:from].is_a? Array
+
+      options[:as]                   ||= model.name.demodulize.underscore.to_sym
+      options[:foreign_key]          ||= "#{options[:as]}_id"
+      options[:through]              ||=
+        build_join_table_symbol(name, (options[:as]._pluralize or model.table_name))
+      options[:join_class_name]      ||= options[:through]._classify
+      options[:table_aliases]        ||=
+        build_table_aliases([options[:through]] + options[:from])
+      options[:select]               ||= build_select(name, options[:table_aliases])
+        options[:polymorphic_key]    ||= "#{name._singularize}_id"
+      options[:polymorphic_type_key] ||= "#{name._singularize}_type"
+      options[:dependent]               = :destroy unless options.has_key? :dependent
+      options[:association_foreign_key] =
+      options[:extend]                  =
+        spiked_create_extension_module(name, Array(options[:extend]))
+      options[:join_extend]             =
+        spiked_create_extension_module(name, Array(options[:join_extend]), "Join")
+      options[:parent_extend]           =
+        spiked_create_extension_module(name, Array(options[:parent_extend]), "Parent")
+    end
 
     def create_join_association(reflection)
       options = {
@@ -59,7 +63,8 @@ module ActiveRecord::Associations::Builder
         if singular == reflection.options[:as]
           raise ActiveRecord::Associations::PolymorphicError,
             "You can't have a self-referential polymorphic has_many " +
-            ":through without renaming the non-polymorphic foreign key in the join model."
+            ":through without renaming the non-polymorphic foreign " +
+            "key in the join model."
         end
 
         plural._as_class.instance_eval do
@@ -73,8 +78,10 @@ module ActiveRecord::Associations::Builder
           end
 
           # the association to the target's parents
-          association = "#{reflection.options[:as]._pluralize}#{"_of_#{association_id}" if reflection.options[:rename_individual_collections]}".to_sym
-          has_many(association,
+          association = reflection.options[:as]._pluralize.to_s
+          association += "_of_#{association_id}" if reflection.options[:rename_individual_collections]
+
+          has_many(association.to_sym,
             :through     => through,
             :class_name  => parent.name,
             :source      => reflection.options[:as],
@@ -98,9 +105,16 @@ module ActiveRecord::Associations::Builder
         # make push/delete accessible from the individual collections but still operate via the general collection
         extension_module = reflection.active_record.class_eval %[
           module #{model.name + current_association._classify + "PolymorphicChildAssociationExtension"}
-            def push *args; proxy_association.owner.send(:#{association_id}).send(:push, *args); self; end
+            def push(*args)
+              proxy_association.owner.send(:#{association_id}).send(:push, *args)
+              self
+            end
+
             alias :<< :push
-            def delete *args; proxy_association.owner.send(:#{association_id}).send(:delete, *args); end
+            def delete(*args)
+              proxy_association.owner.send(:#{association_id}).send(:delete, *args)
+            end
+
             self
           end
         ]
@@ -130,13 +144,14 @@ module ActiveRecord::Associations::Builder
     end
 
     def spiked_create_extension_module(association_id, extensions, identifier = nil)
-      module_extensions = extensions.select{|e| e.is_a? Module}
-      proc_extensions = extensions.select{|e| e.is_a? Proc }
+      module_extensions = extensions.select { |e| e.is_a? Module }
+      proc_extensions   = extensions.select { |e| e.is_a? Proc }
 
       # support namespaced anonymous blocks as well as multiple procs
       proc_extensions.each_with_index do |proc_extension, index|
-        module_name = "#{self.to_s}#{association_id.to_s.classify}Polymorphic#{identifier}AssociationExtension#{index}"
-        the_module = self.class_eval "module #{module_name}; self; end" # XXX hrm
+        module_name = "#{self.to_s}#{association_id.to_s.classify}" +
+          "Polymorphic#{identifier}AssociationExtension#{index}"
+        the_module = self.class_eval "module #{module_name}; self; end"
         the_module.class_eval &proc_extension
         module_extensions << the_module
       end
@@ -153,8 +168,8 @@ module ActiveRecord::Associations::Builder
           rescue NameError => e
             raise ActiveRecord::Associations::PolymorphicError,
               "Could not find a valid class for #{plural.inspect} " +
-              "(tried #{plural.to_s.classify.constantize}). If it's namespaced, be sure to specify it " +
-              "as :\"module/#{plural}\" instead."
+              "(tried #{plural.to_s.classify.constantize}). If it's namespaced, " +
+              "be sure to specify it as :\"module/#{plural}\" instead."
           end
           begin
             plural.to_s.classify.constantize.columns.map(&:name).each_with_index do |field, f_index|
@@ -177,7 +192,7 @@ module ActiveRecord::Associations::Builder
     end
 
     def build_join_table_symbol(association_id, name)
-      [name.to_s, association_id.to_s].sort.join("_").to_sym
+      [name.to_s, association_id.to_s].sort.join('_').to_sym
     end
 
   end
